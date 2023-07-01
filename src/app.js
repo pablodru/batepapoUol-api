@@ -132,7 +132,18 @@ app.get('/messages', async (req,res) => {
     }
 });
 
+app.post('/status', async (req, res) => {
+    const { user } = req.headers;
+    
+    if( !user ) return res.sendStatus(404);
 
+    try{
+        const isOnline = await db.collection('participants').findOne({name: user});
+        if( !isOnline ) return res.sendStatus(404)
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+})
 
 
 
