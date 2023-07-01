@@ -104,6 +104,36 @@ app.post('/messages', async (req, res) => {
     }
 })
 
+app.get('/messages', async (req,res) => {
+    const { user } = req.headers;
+    const { limit } = req.query;
+
+    try{
+        const isOnline = await db.collection('participants').findOne({name: user});
+        if( !isOnline ) return res.status(422).send("Usuário não está logado!")
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+
+    try {
+        let messages = await db.collection('messages').find({ $or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray();
+        messages = messages.reverse();
+        
+        if( limit ){
+            if(typeof limit !== "Number" || limit <= 0) return res.status(422).send("Valor inválido para o limit");
+            messages = messages.slice(-limit);
+            return res.status(200).send(messages);
+        }
+
+        return res.status(200).send(messages);
+
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+});
+
+
+
 
 
 const PORT = 5000;
