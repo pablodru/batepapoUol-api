@@ -88,7 +88,7 @@ app.post('/messages', async (req, res) => {
     const schemaMessage = joi.object({
         to: joi.string().required(),
         text: joi.string().required(),
-        type: joi.valid('message', 'private-message').required(),
+        type: joi.valid('message', 'private_message').required(),
         from: joi.required(),
         time: joi.any()
     });
@@ -110,6 +110,7 @@ app.get('/messages', async (req,res) => {
     const { user } = req.headers;
     let { limit } = req.query;
     limit = Number(limit);
+    console.log(limit)
 
     try{
         const isOnline = await db.collection('participants').findOne({name: user});
@@ -122,8 +123,8 @@ app.get('/messages', async (req,res) => {
         let messages = await db.collection('messages').find({ $or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray();
         messages = messages.reverse();
         
-        if( limit ){
-            if(typeof limit !== "number" || limit <= 0) return res.status(422).send("Valor inválido para o limit");
+        if( limit || limit === 0 ){
+            if(typeof limit !== "number" || limit < 0 || limit === 0 ) return res.status(422).send("Valor inválido para o limit");
             if(limit >= messages.length)  return res.status(200).send(messages);
             messages = messages.slice(0, limit);
             return res.status(200).send(messages);
