@@ -54,6 +54,8 @@ app.post('/participants', async (req,res) => {
             time: realTime
         }
 
+        await db.collection('messages').insertOne(bodyMessages);
+
         res.sendStatus(201);
     } catch (err) {
         res.status(500).send(err.message);
@@ -86,7 +88,7 @@ app.post('/messages', async (req, res) => {
     const schemaMessage = joi.object({
         to: joi.string().required(),
         text: joi.string().required(),
-        type: joi.valid('message', 'private-message'),
+        type: joi.valid('message', 'private-message').required(),
         from: joi.required(),
         time: joi.any()
     });
@@ -106,7 +108,8 @@ app.post('/messages', async (req, res) => {
 
 app.get('/messages', async (req,res) => {
     const { user } = req.headers;
-    const { limit } = req.query;
+    let { limit } = req.query;
+    limit = Number(limit);
 
     try{
         const isOnline = await db.collection('participants').findOne({name: user});
@@ -120,8 +123,9 @@ app.get('/messages', async (req,res) => {
         messages = messages.reverse();
         
         if( limit ){
-            if(typeof limit !== "Number" || limit <= 0) return res.status(422).send("Valor inválido para o limit");
-            messages = messages.slice(-limit);
+            if(typeof limit !== "number" || limit <= 0) return res.status(422).send("Valor inválido para o limit");
+            if(limit >= messages.length)  return res.status(200).send(messages);
+            messages = messages.slice(0, limit);
             return res.status(200).send(messages);
         }
 
