@@ -2,7 +2,7 @@
 
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import joi from "joi";
 import dayjs from "dayjs";
@@ -128,7 +128,7 @@ app.get('/messages', async (req,res) => {
         return res.status(200).send(messages);
 
     } catch (err) {
-        return res.status(500).send(err.message)
+        return res.status(500).send(err.message);
     }
 });
 
@@ -139,11 +139,43 @@ app.post('/status', async (req, res) => {
 
     try{
         const isOnline = await db.collection('participants').findOne({name: user});
-        if( !isOnline ) return res.sendStatus(404)
+        if( !isOnline ) return res.sendStatus(404);
+
+        await db.collection('participants').findOneAndUpdate({ name: user }, { $set: { lastStatus: Date.now() } });
+
+        res.sendStatus(200);
+
     } catch (err) {
-        return res.status(500).send(err.message)
+        return res.status(500).send(err.message);
     }
-})
+});
+
+setInterval( async () => {
+    const timeLess = Date.now() - 10000;
+    try {
+        let users = await db.collection('participants').find( { lastStatus: { $lt:timeLess } } ).toArray();
+        
+        users.forEach( async user => {
+            try{
+                await db.collection('participants').deleteOne( { _id: new ObjectId(user._id) } );
+                const messageExit = {
+                    from: user.name,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: realTime
+                }
+                await db.collection('messages').insertOne(messageExit);
+            } catch {
+                return res.status(500).send(err.message);
+            }
+        })
+
+    } catch (err) {
+        return res.status(500).send(err.message);
+    }
+    
+}, 15000)
 
 
 
