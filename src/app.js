@@ -109,9 +109,7 @@ app.post('/messages', async (req, res) => {
 app.get('/messages', async (req,res) => {
     const { user } = req.headers;
     let { limit } = req.query;
-    limit = Number(limit);
-    console.log(limit)
-    console.log("lalala: ", isNaN(limit))
+    //limit = Number(limit);
 
     try{
         const isOnline = await db.collection('participants').findOne({name: user});
@@ -123,6 +121,9 @@ app.get('/messages', async (req,res) => {
     try {
         let messages = await db.collection('messages').find({ $or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray();
         messages = messages.reverse();
+
+        if( !limit ) return res.status(200).send(messages);
+        else Number(limit);
         
         if( limit || limit === 0 || isNaN(limit) ){
             if(limit < 0 || limit === 0 || isNaN(limit) ) return res.status(422).send("Valor inválido para o limit");
@@ -130,8 +131,6 @@ app.get('/messages', async (req,res) => {
             messages = messages.slice(0, limit);
             return res.status(200).send(messages);
         }
-
-        return res.status(200).send(messages);
 
     } catch (err) {
         return res.status(500).send(err.message);
@@ -155,6 +154,25 @@ app.post('/status', async (req, res) => {
         return res.status(500).send(err.message);
     }
 });
+
+app.delete('/messages/:id', async (req, res) => {
+    const { id } = req.params;
+    const { user } = req.headers;
+
+    try {
+
+        const message = await db.collection('messages').findOne( { _id: new ObjectId(id) } );
+        if( !message )  return res.sendStatus(404);
+        if( message.from !== user ) return res.sendStatus(401);
+
+        const result = await db.collection('messages').deleteOne( { _id: new ObjectId(id) } );
+        if( result.deletedCount > 0) return res.sendStatus(204);
+
+    } catch (err) {
+        return res.status(500).send(err.message);
+    }
+
+})
 
 setInterval( async () => {
     const timeLess = Date.now() - 10000;
